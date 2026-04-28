@@ -1,41 +1,36 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
-from typing import Callable
+from typing import Callable, List, Optional, Tuple
 
 try:
     from chess_pawn_mower.board import Board
 except (ModuleNotFoundError, ImportError):
     from board import Board  # type: ignore
 
-Position = tuple[int, int]
+Position = Tuple[int, int]
 
 ROOK_DIRECTIONS = ((-1, 0), (1, 0), (0, -1), (0, 1))
 BISHOP_DIRECTIONS = ((-1, -1), (-1, 1), (1, -1), (1, 1))
 KNIGHT_DELTAS = ((-2, -1), (-2, 1), (-1, -2), (-1, 2), (1, -2), (1, 2), (2, -1), (2, 1))
 KING_DELTAS = (
     (-1, -1), (-1, 0), (-1, 1),
-    (0, -1),            (0, 1),
-    (1, -1),  (1, 0),   (1, 1),
+    (0, -1),           (0, 1),
+    (1, -1),  (1, 0),  (1, 1),
 )
 WHITE_PIECES = {'P', 'T', 'B', 'C', 'D', 'R'}
 ACTIVATABLE_PIECES = {'P', 'T', 'B', 'C', 'D'}
 
 
-def is_white_piece(symbol: str) -> bool:
+def is_white_piece(symbol):  # type: (str) -> bool
     return symbol in WHITE_PIECES
 
 
-def is_black_pawn(symbol: str) -> bool:
+def is_black_pawn(symbol):  # type: (str) -> bool
     return symbol == 'p'
 
 
-def _line_capture_moves(
-    board: Board,
-    origin: Position,
-    directions: Iterable[tuple],
-    cell_at=None,
-):
+def _line_capture_moves(board, origin, directions, cell_at=None):
     cell_at = cell_at or board.get
     row, col = origin
     targets = []

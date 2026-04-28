@@ -1,11 +1,11 @@
 from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any, List, Optional
 
 
 @dataclass
 class Node:
-    """Nó genérico de pesquisa."""
     state: Any
     parent: Optional['Node'] = None
     action: Any = None
@@ -13,12 +13,12 @@ class Node:
     h: float = 0.0
 
     @property
-    def f(self) -> float:
+    def f(self):  # type: () -> float
         return self.g + self.h
 
-    def path(self) -> list['Node']:
-        nodes: list[Node] = []
-        current: Optional[Node] = self
+    def path(self):  # type: () -> List[Node]
+        nodes = []
+        current = self
         while current is not None:
             nodes.append(current)
             current = current.parent

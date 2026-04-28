@@ -4,24 +4,15 @@ from collections import deque
 from heapq import heappop, heappush
 from itertools import count
 from time import perf_counter
-from typing import Callable, Iterable, Optional, Tuple, TypeVar
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
 
 try:
     from search.node import Node
 except (ModuleNotFoundError, ImportError):
     from node import Node  # type: ignore
 
-State = TypeVar('State')
-Action = TypeVar('Action')
 
-
-def bfs(
-    initial_state: State,
-    is_goal: Callable[[State], bool],
-    successors: Callable[[State], Iterable[Tuple[Action, State]]],
-    time_limit_ms: Optional[int] = None,
-) -> Optional[Node]:
-    """Pesquisa em largura sobre estados hashable."""
+def bfs(initial_state, is_goal, successors, time_limit_ms=None):
     deadline = None if time_limit_ms is None else perf_counter() + (time_limit_ms / 1000.0)
     root = Node(state=initial_state)
     if is_goal(initial_state):
@@ -43,22 +34,15 @@ def bfs(
     return None
 
 
-def astar(
-    initial_state: State,
-    is_goal: Callable[[State], bool],
-    successors: Callable[[State], Iterable[Tuple[Action, State, float]]],
-    heuristic: Callable[[State], float],
-    time_limit_ms: Optional[int] = None,
-) -> Optional[Node]:
-    """Pesquisa A* genérica."""
+def astar(initial_state, is_goal, successors, heuristic, time_limit_ms=None):
     deadline = None if time_limit_ms is None else perf_counter() + (time_limit_ms / 1000.0)
     root = Node(state=initial_state, h=heuristic(initial_state))
     if is_goal(initial_state):
         return root
-    open_set: list[tuple[float, int, Node]] = []
+    open_set = []
     order = count()
     heappush(open_set, (root.f, next(order), root))
-    best_g: dict[State, float] = {initial_state: 0.0}
+    best_g = {initial_state: 0.0}
     while open_set:
         if deadline is not None and perf_counter() > deadline:
             return None
