@@ -29,22 +29,89 @@ def is_goal(state: PawnMowerState) -> bool:
     return not state.remaining_black_pawns
 
 
+# ──────────────────────────────────────────────────────────────
+#  Heurística melhorada
+#  Combina três componentes admissíveis:
+#
+#  1. MST (Minimum Spanning Tree) sobre os peões restantes
+#     — distância de Chebyshev entre pares de peões.
+#     Estima o custo mínimo para "ligar" todos os peões numa
+#     cadeia de capturas (algoritmo de Prim, O(n²)).
+#
+#  2. Distância da posição atual ao peão mais próximo
+#     — custo mínimo para alcançar o primeiro alvo.
+#
+#  3. Penalidade de transição
+#     — se não há peça ativa, é necessária pelo menos 1 acção
+#     extra para ativar uma peça branca.
+#
+#  A soma dos três componentes é admissível (nunca sobrestima)
+#  e é significativamente mais informada do que apenas contar
+#  peões ou usar a distância ao mais próximo.
+# ──────────────────────────────────────────────────────────────
+
+def _chebyshev(a: tuple[int, int], b: tuple[int, int]) -> int:
+    return max(abs(a[0] - b[0]), abs(a[1] - b[1]))
+
+
+def _mst_cost(points: list[tuple[int, int]]) -> float:
+    """Custo do MST sobre `points` usando distância de Chebyshev (Prim)."""
+    if len(points) <= 1:
+        return 0.0
+    in_tree = {0}
+    min_edge = [_chebyshev(points[0], points[i]) for i in range(len(points))]
+    total = 0.0
+    for _ in range(len(points) - 1):
+        best = float('inf')
+        best_idx = -1
+        for i, cost in enumerate(min_edge):
+            if i not in in_tree and cost < best:
+                best = cost
+                best_idx = i
+        total += best
+        in_tree.add(best_idx)
+        for i in range(len(points)):
+            if i not in in_tree:
+                d = _chebyshev(points[best_idx], points[i])
+                if d < min_edge[i]:
+                    min_edge[i] = d
+    return total
+
+
 def heuristic(state: PawnMowerState) -> float:
-    pawns = state.remaining_black_pawns
+    pawns = list(state.remaining_black_pawns)
     if not pawns:
         return 0.0
 
-    n = len(pawns)
+    # ── Componente 1: MST entre os peões restantes ────────────
+    mst = _mst_cost(pawns)
 
-    # Sem peça ativa: precisa pelo menos de 1 ação para ativar + 1 por peão
-    if state.active_position is None:
-        return float(n + 1)
+    # ── Componente 2: distância ao peão mais próximo ──────────
+    current_pos = state.active_position or state.king_position
+    if current_pos is not None:
+        dist_nearest = min(_chebyshev(current_pos, p) for p in pawns)
+    else:
+        # Sem peça ativa: usa a peça branca mais perto de qualquer peão
+        white_positions = [
+            (r, c)
+            for r, c, sym in state.board.iter_cells()
+            if sym in WHITE_PIECES
+        ]
+        if white_positions:
+            dist_nearest = min(
+                _chebyshev(w, p)
+                for w in white_positions
+                for p in pawns
+            )
+        else:
+            dist_nearest = 0.0
 
-    # Com peça ativa: distância de Chebyshev ao peão mais próximo
-    r, c = state.active_position
-    min_dist = min(max(abs(r - pr), abs(c - pc)) for pr, pc in pawns)
+    # ── Componente 3: penalidade de transição ─────────────────
+    # Se não há peça ativa nem rei em movimento, custa pelo menos
+    # 1 acção extra para ativar a primeira peça.
+    transition = 0 if (state.active_position is not None or state.king_position is not None) else 1
 
-    return float(n - 1 + min_dist)
+    return mst + dist_nearest + transition
 
 
 def _cell_at(state: PawnMowerState, row: int, col: int) -> str:
@@ -160,7 +227,7 @@ def solve_board(board: Board, time_limit_ms: int) -> Optional[Node]:
         initial_state,
         is_goal=is_goal,
         successors=successors,
-        heuristic=lambda s: heuristic(s) * 5,  # peso 5 → muito mais rápido
+        heuristic=heuristic,   # sem peso → A* puro, admissível e consistente
         time_limit_ms=time_limit_ms,
     )
 
@@ -170,4 +237,3 @@ def solution_string(node: Optional[Node]) -> str:
         return ''
     actions = [str(current.action) for current in node.path()[1:] if current.action]
     return ' '.join(actions)
-
