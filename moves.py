@@ -33,12 +33,12 @@ def is_black_pawn(symbol: str) -> bool:
 def _line_capture_moves(
     board: Board,
     origin: Position,
-    directions: Iterable[tuple[int, int]],
-    cell_at: Callable[[int, int], str] | None = None,
-) -> list[Position]:
+    directions: Iterable[tuple],
+    cell_at=None,
+):
     cell_at = cell_at or board.get
     row, col = origin
-    targets: list[Position] = []
+    targets = []
     for d_row, d_col in directions:
         current_row, current_col = row + d_row, col + d_col
         while board.in_bounds(current_row, current_col):
@@ -53,22 +53,22 @@ def _line_capture_moves(
     return targets
 
 
-def rook_captures(board: Board, origin: Position, cell_at: Callable[[int, int], str] | None = None) -> list[Position]:
+def rook_captures(board, origin, cell_at=None):
     return _line_capture_moves(board, origin, ROOK_DIRECTIONS, cell_at)
 
 
-def bishop_captures(board: Board, origin: Position, cell_at: Callable[[int, int], str] | None = None) -> list[Position]:
+def bishop_captures(board, origin, cell_at=None):
     return _line_capture_moves(board, origin, BISHOP_DIRECTIONS, cell_at)
 
 
-def queen_captures(board: Board, origin: Position, cell_at: Callable[[int, int], str] | None = None) -> list[Position]:
+def queen_captures(board, origin, cell_at=None):
     return rook_captures(board, origin, cell_at) + bishop_captures(board, origin, cell_at)
 
 
-def knight_captures(board: Board, origin: Position, cell_at: Callable[[int, int], str] | None = None) -> list[Position]:
+def knight_captures(board, origin, cell_at=None):
     cell_at = cell_at or board.get
     row, col = origin
-    targets: list[Position] = []
+    targets = []
     for d_row, d_col in KNIGHT_DELTAS:
         next_row, next_col = row + d_row, col + d_col
         if board.in_bounds(next_row, next_col) and is_black_pawn(cell_at(next_row, next_col)):
@@ -76,10 +76,10 @@ def knight_captures(board: Board, origin: Position, cell_at: Callable[[int, int]
     return targets
 
 
-def king_captures(board: Board, origin: Position, cell_at: Callable[[int, int], str] | None = None) -> list[Position]:
+def king_captures(board, origin, cell_at=None):
     cell_at = cell_at or board.get
     row, col = origin
-    targets: list[Position] = []
+    targets = []
     for d_row, d_col in KING_DELTAS:
         next_row, next_col = row + d_row, col + d_col
         if board.in_bounds(next_row, next_col) and is_black_pawn(cell_at(next_row, next_col)):
@@ -87,10 +87,10 @@ def king_captures(board: Board, origin: Position, cell_at: Callable[[int, int], 
     return targets
 
 
-def pawn_captures(board: Board, origin: Position, cell_at: Callable[[int, int], str] | None = None) -> list[Position]:
+def pawn_captures(board, origin, cell_at=None):
     cell_at = cell_at or board.get
     row, col = origin
-    targets: list[Position] = []
+    targets = []
     for d_col in (-1, 1):
         next_row, next_col = row + 1, col + d_col
         if board.in_bounds(next_row, next_col) and is_black_pawn(cell_at(next_row, next_col)):
@@ -98,28 +98,27 @@ def pawn_captures(board: Board, origin: Position, cell_at: Callable[[int, int], 
     return targets
 
 
-def capture_targets(board: Board, origin: Position, piece: str, cell_at: Callable[[int, int], str] | None = None) -> list[Position]:
-    match piece:
-        case 'T':
-            return rook_captures(board, origin, cell_at)
-        case 'B':
-            return bishop_captures(board, origin, cell_at)
-        case 'C':
-            return knight_captures(board, origin, cell_at)
-        case 'D':
-            return queen_captures(board, origin, cell_at)
-        case 'R':
-            return king_captures(board, origin, cell_at)
-        case 'P':
-            return pawn_captures(board, origin, cell_at)
-        case _:
-            return []
+def capture_targets(board, origin, piece, cell_at=None):
+    if piece == 'T':
+        return rook_captures(board, origin, cell_at)
+    elif piece == 'B':
+        return bishop_captures(board, origin, cell_at)
+    elif piece == 'C':
+        return knight_captures(board, origin, cell_at)
+    elif piece == 'D':
+        return queen_captures(board, origin, cell_at)
+    elif piece == 'R':
+        return king_captures(board, origin, cell_at)
+    elif piece == 'P':
+        return pawn_captures(board, origin, cell_at)
+    else:
+        return []
 
 
-def king_step_targets(board: Board, origin: Position, cell_at: Callable[[int, int], str] | None = None) -> list[Position]:
+def king_step_targets(board, origin, cell_at=None):
     cell_at = cell_at or board.get
     row, col = origin
-    targets: list[Position] = []
+    targets = []
     for d_row, d_col in KING_DELTAS:
         next_row, next_col = row + d_row, col + d_col
         if not board.in_bounds(next_row, next_col):
