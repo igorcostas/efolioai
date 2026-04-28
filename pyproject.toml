@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+[project]
+name = "projeto-efolio-ia"
+version = "0.1.0"
+description = "Estrutura inicial do projeto do e-fólio de Inteligência Artificial"
+requires-python = ">=3.10"
+readme = "README.md"
+[tool.setuptools]
+py-modules = ["main"]
+[tool.pytest.ini_options]
+pythonpath = ["."]
