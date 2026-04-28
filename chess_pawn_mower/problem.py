@@ -30,24 +30,7 @@ def is_goal(state: PawnMowerState) -> bool:
 
 
 # ──────────────────────────────────────────────────────────────
-#  Heurística melhorada
-#  Combina três componentes admissíveis:
-#
-#  1. MST (Minimum Spanning Tree) sobre os peões restantes
-#     — distância de Chebyshev entre pares de peões.
-#     Estima o custo mínimo para "ligar" todos os peões numa
-#     cadeia de capturas (algoritmo de Prim, O(n²)).
-#
-#  2. Distância da posição atual ao peão mais próximo
-#     — custo mínimo para alcançar o primeiro alvo.
-#
-#  3. Penalidade de transição
-#     — se não há peça ativa, é necessária pelo menos 1 acção
-#     extra para ativar uma peça branca.
-#
-#  A soma dos três componentes é admissível (nunca sobrestima)
-#  e é significativamente mais informada do que apenas contar
-#  peões ou usar a distância ao mais próximo.
+#  Heurística — MST + distância ao peão mais próximo
 # ──────────────────────────────────────────────────────────────
 
 def _chebyshev(a: tuple[int, int], b: tuple[int, int]) -> int:
@@ -55,7 +38,7 @@ def _chebyshev(a: tuple[int, int], b: tuple[int, int]) -> int:
 
 
 def _mst_cost(points: list[tuple[int, int]]) -> float:
-    """Custo do MST sobre `points` usando distância de Chebyshev (Prim)."""
+    """Custo do MST sobre `points` usando distância de Chebyshev (Prim O(n²))."""
     if len(points) <= 1:
         return 0.0
     in_tree = {0}
@@ -83,15 +66,12 @@ def heuristic(state: PawnMowerState) -> float:
     if not pawns:
         return 0.0
 
-    # ── Componente 1: MST entre os peões restantes ────────────
     mst = _mst_cost(pawns)
 
-    # ── Componente 2: distância ao peão mais próximo ──────────
     current_pos = state.active_position or state.king_position
     if current_pos is not None:
         dist_nearest = min(_chebyshev(current_pos, p) for p in pawns)
     else:
-        # Sem peça ativa: usa a peça branca mais perto de qualquer peão
         white_positions = [
             (r, c)
             for r, c, sym in state.board.iter_cells()
@@ -106,29 +86,38 @@ def heuristic(state: PawnMowerState) -> float:
         else:
             dist_nearest = 0.0
 
-    # ── Componente 3: penalidade de transição ─────────────────
-    # Se não há peça ativa nem rei em movimento, custa pelo menos
-    # 1 acção extra para ativar a primeira peça.
     transition = 0 if (state.active_position is not None or state.king_position is not None) else 1
-
     return mst + dist_nearest + transition
 
+
+# ──────────────────────────────────────────────────────────────
+#  Visão virtual do tabuleiro num dado estado
+# ──────────────────────────────────────────────────────────────
 
 def _cell_at(state: PawnMowerState, row: int, col: int) -> str:
     position = (row, col)
 
+    # Rei em movimento tem prioridade
     if position == state.king_position:
         return 'R'
 
+    # Peça activa na sua posição actual
     if position == state.active_position and state.active_piece is not None:
         return state.active_piece
 
+    # Peões pretos ainda por capturar
     if position in state.remaining_black_pawns:
         return 'p'
 
+    # Peças brancas estáticas no tabuleiro original
     board_cell = state.board.get(row, col)
     if board_cell in WHITE_PIECES:
-        if state.active_origin_position == position and state.active_position != position:
+        # A casa de origem da peça activa aparece vazia
+        # (a peça saiu de lá)
+        if (
+            state.active_origin_position == position
+            and state.active_position != position
+        ):
             return ' '
         return board_cell
 
@@ -141,27 +130,82 @@ def _all_white_positions(board: Board) -> Iterable[tuple[int, int, str]]:
             yield row, col, symbol
 
 
-def _activate_piece(state: PawnMowerState, position: tuple[int, int], symbol: str) -> PawnMowerState:
+# ──────────────────────────────────────────────────────────────
+#  Transições de estado
+#
+#  Os três modos são MUTUAMENTE EXCLUSIVOS:
+#
+#  MODO 0 — inicial / entre jogadas
+#    active_piece=None, active_position=None, king_position=None
+#    → única acção possível: activar uma peça branca
+#
+#  MODO 1 — peça activa
+#    active_piece=X,    active_position=(r,c), king_position=None
+#    → capturar peões atingíveis pela peça
+#    → passar para MODO 2: o rei move-se a partir de active_position
+#      (active_piece e active_position ficam LIMPOS ao entrar em MODO 2)
+#
+#  MODO 2 — rei em movimento
+#    active_piece=None, active_position=None, king_position=(r,c)
+#    → mover o rei um passo para uma casa vazia (continua MODO 2)
+#    → mover o rei para uma peça branca → activa essa peça (MODO 1)
+# ──────────────────────────────────────────────────────────────
+
+def _activate_piece(
+    state: PawnMowerState,
+    position: tuple[int, int],
+    symbol: str,
+) -> PawnMowerState:
+    """MODO 0 / MODO 2  →  MODO 1."""
     return replace(
         state,
         active_piece=symbol,
         active_origin_position=position,
         active_position=position,
-        king_position=None,
+        king_position=None,          # sai de MODO 2
         move_count=state.move_count + 1,
     )
 
 
-def _move_active_piece(state: PawnMowerState, destination: tuple[int, int]) -> PawnMowerState:
+def _capture_with_active(
+    state: PawnMowerState,
+    destination: tuple[int, int],
+) -> PawnMowerState:
+    """MODO 1 → MODO 1  (captura de peão, peça permanece activa)."""
+    next_remaining = frozenset(
+        p for p in state.remaining_black_pawns if p != destination
+    )
     return replace(
         state,
         active_position=destination,
-        king_position=None,
+        remaining_black_pawns=next_remaining,
         move_count=state.move_count + 1,
     )
 
 
-def _move_king(state: PawnMowerState, destination: tuple[int, int]) -> PawnMowerState:
+def _enter_king_mode(
+    state: PawnMowerState,
+    king_start: tuple[int, int],
+) -> PawnMowerState:
+    """
+    MODO 1 → MODO 2.
+    O rei começa a mover-se a partir de `king_start` (= posição actual da peça).
+    A peça activa é LIMPA — o estado entra em modo rei puro.
+    """
+    return replace(
+        state,
+        active_piece=None,
+        active_position=None,
+        king_position=king_start,
+        move_count=state.move_count + 1,
+    )
+
+
+def _move_king_step(
+    state: PawnMowerState,
+    destination: tuple[int, int],
+) -> PawnMowerState:
+    """MODO 2 → MODO 2  (rei move-se para casa vazia)."""
     return replace(
         state,
         king_position=destination,
@@ -169,57 +213,88 @@ def _move_king(state: PawnMowerState, destination: tuple[int, int]) -> PawnMower
     )
 
 
-def successors(state: PawnMowerState) -> list[tuple[str, PawnMowerState, float]]:
+# ──────────────────────────────────────────────────────────────
+#  Geração de sucessores
+# ──────────────────────────────────────────────────────────────
+
+def successors(
+    state: PawnMowerState,
+) -> list[tuple[str, PawnMowerState, float]]:
     if state.move_count >= MAX_ACTIONS or is_goal(state):
         return []
 
     board = state.board
     results: list[tuple[str, PawnMowerState, float]] = []
 
-    if state.active_piece is None and state.active_position is None and state.king_position is None:
+    # ── MODO 0: activar uma peça branca ──────────────────────
+    if (
+        state.active_piece is None
+        and state.active_position is None
+        and state.king_position is None
+    ):
         for row, col, symbol in _all_white_positions(board):
-            destination = Board.index_to_square(row, col)
-            results.append((destination, _activate_piece(state, (row, col), symbol), 1.0))
+            sq = Board.index_to_square(row, col)
+            results.append((sq, _activate_piece(state, (row, col), symbol), 1.0))
         return results
 
-    if state.active_position is None or state.active_piece is None:
-        return results
-
+    # ── MODO 2: rei em movimento ──────────────────────────────
     if state.king_position is not None:
-        for row, col in king_step_targets(board, state.king_position, cell_at=lambda r, c: _cell_at(state, r, c)):
+        for row, col in king_step_targets(
+            board, state.king_position,
+            cell_at=lambda r, c: _cell_at(state, r, c),
+        ):
             cell = _cell_at(state, row, col)
-            destination = Board.index_to_square(row, col)
+            sq = Board.index_to_square(row, col)
             if cell == ' ':
-                results.append((destination, _move_king(state, (row, col)), 1.0))
+                # rei continua a mover-se
+                results.append((sq, _move_king_step(state, (row, col)), 1.0))
             elif is_white_piece(cell):
-                results.append((destination, _activate_piece(state, (row, col), cell), 1.0))
+                # rei chegou a uma peça branca → activa-a
+                results.append((sq, _activate_piece(state, (row, col), cell), 1.0))
         return results
 
-    # Modo peça ativa: capturas e saída para rei.
-    capture_cells = capture_targets(board, state.active_position, state.active_piece, cell_at=lambda r, c: _cell_at(state, r, c))
-    for row, col in capture_cells:
+    # ── MODO 1: peça activa ───────────────────────────────────
+    # (active_piece != None, active_position != None, king_position == None)
+    if state.active_piece is None or state.active_position is None:
+        return results
+
+    # 1a) Capturas de peões com a peça activa
+    for row, col in capture_targets(
+        board, state.active_position, state.active_piece,
+        cell_at=lambda r, c: _cell_at(state, r, c),
+    ):
         if (row, col) not in state.remaining_black_pawns:
             continue
-        next_remaining = frozenset(position for position in state.remaining_black_pawns if position != (row, col))
-        next_state = replace(
-            state,
-            active_position=(row, col),
-            active_origin_position=state.active_origin_position,
-            remaining_black_pawns=next_remaining,
-            move_count=state.move_count + 1,
-        )
-        results.append((Board.index_to_square(row, col), next_state, 1.0))
+        sq = Board.index_to_square(row, col)
+        results.append((sq, _capture_with_active(state, (row, col)), 1.0))
 
-    for row, col in king_step_targets(board, state.active_position, cell_at=lambda r, c: _cell_at(state, r, c)):
+    # 1b) Passar o controlo ao rei: 1 passo do rei a partir
+    #     da posição actual da peça activa (entra em MODO 2).
+    #     O primeiro passo já consome 1 acção e limpa a peça activa.
+    king_src = state.active_position
+    for row, col in king_step_targets(
+        board, king_src,
+        cell_at=lambda r, c: _cell_at(state, r, c),
+    ):
         cell = _cell_at(state, row, col)
-        destination = Board.index_to_square(row, col)
+        sq = Board.index_to_square(row, col)
         if cell == ' ':
-            results.append((destination, _move_king(state, (row, col)), 1.0))
+            # entra em MODO 2 com o rei em (row, col)
+            next_state = replace(
+                _enter_king_mode(state, king_src),
+                king_position=(row, col),
+            )
+            results.append((sq, next_state, 1.0))
         elif is_white_piece(cell):
-            results.append((destination, _activate_piece(state, (row, col), cell), 1.0))
+            # rei chega directamente a uma peça branca → activa-a
+            results.append((sq, _activate_piece(state, (row, col), cell), 1.0))
 
     return results
 
+
+# ──────────────────────────────────────────────────────────────
+#  Interface pública
+# ──────────────────────────────────────────────────────────────
 
 def solve_board(board: Board, time_limit_ms: int) -> Optional[Node]:
     initial_state = build_initial_state(board)
@@ -227,7 +302,7 @@ def solve_board(board: Board, time_limit_ms: int) -> Optional[Node]:
         initial_state,
         is_goal=is_goal,
         successors=successors,
-        heuristic=heuristic,   # sem peso → A* puro, admissível e consistente
+        heuristic=heuristic,
         time_limit_ms=time_limit_ms,
     )
 
@@ -235,5 +310,6 @@ def solve_board(board: Board, time_limit_ms: int) -> Optional[Node]:
 def solution_string(node: Optional[Node]) -> str:
     if node is None:
         return ''
-    actions = [str(current.action) for current in node.path()[1:] if current.action]
-    return ' '.join(actions)
+    return ' '.join(
+        str(n.action) for n in node.path()[1:] if n.action is not None
+    )
