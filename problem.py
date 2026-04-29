@@ -28,6 +28,7 @@ def build_initial_state(board):
         active_position=None,
         king_position=None,
         move_count=0,
+        visited_positions=frozenset(),
     )
 
 
@@ -89,8 +90,7 @@ def heuristic(state):
 
     transition = 0 if (state.active_position is not None or state.king_position is not None) else 1
 
-    # Penalizacao por peoes isolados: peao mais longe do centroide do grupo
-    # Incentiva o agente a nao deixar peoes isolados para o fim
+    # Penalizacao por peoes isolados
     if len(pawns) > 1:
         c_row = sum(p[0] for p in pawns) / len(pawns)
         c_col = sum(p[1] for p in pawns) / len(pawns)
@@ -128,6 +128,7 @@ def _all_white_positions(board):
 
 
 def _activate_piece(state, position, symbol):
+    # ao activar uma nova peca, reset das posicoes visitadas
     return replace(
         state,
         active_piece=symbol,
@@ -135,6 +136,7 @@ def _activate_piece(state, position, symbol):
         active_position=position,
         king_position=None,
         move_count=state.move_count + 1,
+        visited_positions=frozenset([position]),
     )
 
 
@@ -142,29 +144,35 @@ def _capture_with_active(state, destination):
     next_remaining = frozenset(
         p for p in state.remaining_black_pawns if p != destination
     )
+    # apos captura, reset visited (nova posicao e novo contexto)
     return replace(
         state,
         active_position=destination,
         remaining_black_pawns=next_remaining,
         move_count=state.move_count + 1,
+        visited_positions=frozenset([destination]),
     )
 
 
 def _enter_king_mode(state, king_dest):
+    # ao transitar para modo rei, reset visited com a posicao do rei
     return replace(
         state,
         active_piece=None,
         active_position=None,
         king_position=king_dest,
         move_count=state.move_count + 1,
+        visited_positions=frozenset([king_dest]),
     )
 
 
 def _move_king_step(state, destination):
+    # acumula posicoes visitadas para evitar ciclos
     return replace(
         state,
         king_position=destination,
         move_count=state.move_count + 1,
+        visited_positions=state.visited_positions | frozenset([destination]),
     )
 
 
@@ -187,7 +195,6 @@ def successors(state):
         return results
 
     # MODO 2: rei em movimento
-    # O rei pode: mover para casa vazia OU activar uma peca branca adjacente
     if state.king_position is not None:
         row_k, col_k = state.king_position
         from moves import KING_DELTAS
@@ -195,17 +202,20 @@ def successors(state):
             next_row, next_col = row_k + d_row, col_k + d_col
             if not board.in_bounds(next_row, next_col):
                 continue
+            next_pos = (next_row, next_col)
             cell = _cell_at(state, next_row, next_col)
             sq = Board.index_to_square(next_row, next_col)
             if cell == ' ':
-                results.append((sq, _move_king_step(state, (next_row, next_col)), 1.0))
+                # proibe revisitar posicoes no mesmo trajecto do rei
+                if next_pos in state.visited_positions:
+                    continue
+                results.append((sq, _move_king_step(state, next_pos), 1.0))
             elif cell in WHITE_PIECES and cell != 'R':
-                results.append((sq, _activate_piece(state, (next_row, next_col), cell), 1.0))
+                # activar peca branca adjacente (reset visited)
+                results.append((sq, _activate_piece(state, next_pos, cell), 1.0))
         return results
 
     # MODO 1: peca activa
-    # A peca captura peoes pretos ao seu alcance
-    # A transicao para MODO 2 (rei) so e valida para casas VAZIAS
     if state.active_piece is None or state.active_position is None:
         return results
 
@@ -219,15 +229,18 @@ def successors(state):
         sq = Board.index_to_square(row, col)
         results.append((sq, _capture_with_active(state, (row, col)), 1.0))
 
-    # transicao MODO 1 -> MODO 2: rei entra APENAS em casas vazias
+    # transicao MODO 1 -> MODO 2: rei entra APENAS em casas vazias nao visitadas
     for row, col in king_step_targets(
         board, state.active_position,
         cell_at=lambda r, c: _cell_at(state, r, c),
     ):
+        next_pos = (row, col)
+        if next_pos in state.visited_positions:
+            continue
         cell = _cell_at(state, row, col)
         if cell == ' ':
             sq = Board.index_to_square(row, col)
-            results.append((sq, _enter_king_mode(state, (row, col)), 1.0))
+            results.append((sq, _enter_king_mode(state, next_pos), 1.0))
 
     return results
 

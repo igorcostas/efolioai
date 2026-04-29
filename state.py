@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import FrozenSet, Optional, Tuple
 
 try:
@@ -20,3 +20,6 @@ class PawnMowerState:
     active_position: Optional[Tuple[int, int]] = None
     king_position: Optional[Tuple[int, int]] = None
     move_count: int = 0
+    # posicoes visitadas na jogada actual (desde a ultima activacao de peca)
+    # impede ciclos no movimento do rei e da peca activa
+    visited_positions: FrozenSet[Tuple[int, int]] = frozenset()
