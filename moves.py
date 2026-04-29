@@ -111,6 +111,10 @@ def capture_targets(board, origin, piece, cell_at=None):
 
 
 def king_step_targets(board, origin, cell_at=None):
+    """Devolve apenas casas VAZIAS adjacentes ao rei (1 passo).
+    Casas com peões pretos ou peças brancas são excluídas —
+    o rei só se pode mover para casas livres.
+    """
     cell_at = cell_at or board.get
     row, col = origin
     targets = []
@@ -118,7 +122,8 @@ def king_step_targets(board, origin, cell_at=None):
         next_row, next_col = row + d_row, col + d_col
         if not board.in_bounds(next_row, next_col):
             continue
-        if cell_at(next_row, next_col) == 'p':
-            continue
-        targets.append((next_row, next_col))
+        cell = cell_at(next_row, next_col)
+        # Só casas completamente vazias são destinos válidos do rei
+        if cell == ' ':
+            targets.append((next_row, next_col))
     return targets
