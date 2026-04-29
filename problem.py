@@ -66,7 +66,9 @@ def heuristic(state):
     pawns = list(state.remaining_black_pawns)
     if not pawns:
         return 0.0
+
     mst = _mst_cost(pawns)
+
     current_pos = state.active_position or state.king_position
     if current_pos is not None:
         dist_nearest = min(_chebyshev(current_pos, p) for p in pawns)
@@ -84,8 +86,20 @@ def heuristic(state):
             )
         else:
             dist_nearest = 0.0
+
     transition = 0 if (state.active_position is not None or state.king_position is not None) else 1
-    return mst + dist_nearest + transition
+
+    # Penalizacao por peoes isolados: peao mais longe do centroide do grupo
+    # Incentiva o agente a nao deixar peoes isolados para o fim
+    if len(pawns) > 1:
+        c_row = sum(p[0] for p in pawns) / len(pawns)
+        c_col = sum(p[1] for p in pawns) / len(pawns)
+        centroid = (int(round(c_row)), int(round(c_col)))
+        isolation_penalty = max(_chebyshev(p, centroid) for p in pawns) * 0.3
+    else:
+        isolation_penalty = 0.0
+
+    return mst + dist_nearest + transition + isolation_penalty
 
 
 def _cell_at(state, row, col):
@@ -184,12 +198,9 @@ def successors(state):
             cell = _cell_at(state, next_row, next_col)
             sq = Board.index_to_square(next_row, next_col)
             if cell == ' ':
-                # mover rei para casa vazia
                 results.append((sq, _move_king_step(state, (next_row, next_col)), 1.0))
             elif cell in WHITE_PIECES and cell != 'R':
-                # activar peca branca adjacente
                 results.append((sq, _activate_piece(state, (next_row, next_col), cell), 1.0))
-            # casas com peoes pretos ou o proprio rei sao ignoradas
         return results
 
     # MODO 1: peca activa
@@ -217,9 +228,6 @@ def successors(state):
         if cell == ' ':
             sq = Board.index_to_square(row, col)
             results.append((sq, _enter_king_mode(state, (row, col)), 1.0))
-        # peças brancas adjacentes NÃO geram transição aqui;
-        # o rei tem de primeiro entrar numa casa vazia (MODO 2)
-        # e só depois activar uma peça branca a partir do MODO 2.
 
     return results
 
