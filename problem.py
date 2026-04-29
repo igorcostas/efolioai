@@ -173,23 +173,32 @@ def successors(state):
         return results
 
     # MODO 2: rei em movimento
+    # O rei pode: mover para casa vazia OU activar uma peca branca adjacente
     if state.king_position is not None:
-        for row, col in king_step_targets(
-            board, state.king_position,
-            cell_at=lambda r, c: _cell_at(state, r, c),
-        ):
-            cell = _cell_at(state, row, col)
-            sq = Board.index_to_square(row, col)
+        row_k, col_k = state.king_position
+        from moves import KING_DELTAS
+        for d_row, d_col in KING_DELTAS:
+            next_row, next_col = row_k + d_row, col_k + d_col
+            if not board.in_bounds(next_row, next_col):
+                continue
+            cell = _cell_at(state, next_row, next_col)
+            sq = Board.index_to_square(next_row, next_col)
             if cell == ' ':
-                results.append((sq, _move_king_step(state, (row, col)), 1.0))
-            elif is_white_piece(cell):
-                results.append((sq, _activate_piece(state, (row, col), cell), 1.0))
+                # mover rei para casa vazia
+                results.append((sq, _move_king_step(state, (next_row, next_col)), 1.0))
+            elif cell in WHITE_PIECES and cell != 'R':
+                # activar peca branca adjacente
+                results.append((sq, _activate_piece(state, (next_row, next_col), cell), 1.0))
+            # casas com peoes pretos ou o proprio rei sao ignoradas
         return results
 
     # MODO 1: peca activa
+    # A peca captura peoes pretos ao seu alcance
+    # A transicao para MODO 2 (rei) so e valida para casas VAZIAS
     if state.active_piece is None or state.active_position is None:
         return results
 
+    # capturas de peoes pretos
     for row, col in capture_targets(
         board, state.active_position, state.active_piece,
         cell_at=lambda r, c: _cell_at(state, r, c),
@@ -199,16 +208,18 @@ def successors(state):
         sq = Board.index_to_square(row, col)
         results.append((sq, _capture_with_active(state, (row, col)), 1.0))
 
+    # transicao MODO 1 -> MODO 2: rei entra APENAS em casas vazias
     for row, col in king_step_targets(
         board, state.active_position,
         cell_at=lambda r, c: _cell_at(state, r, c),
     ):
         cell = _cell_at(state, row, col)
-        sq = Board.index_to_square(row, col)
         if cell == ' ':
+            sq = Board.index_to_square(row, col)
             results.append((sq, _enter_king_mode(state, (row, col)), 1.0))
-        elif is_white_piece(cell):
-            results.append((sq, _activate_piece(state, (row, col), cell), 1.0))
+        # peças brancas adjacentes NÃO geram transição aqui;
+        # o rei tem de primeiro entrar numa casa vazia (MODO 2)
+        # e só depois activar uma peça branca a partir do MODO 2.
 
     return results
 
