@@ -10,8 +10,8 @@ except (ModuleNotFoundError, ImportError):
 
 Position = Tuple[int, int]
 
-# Instância única do e-fólio B (hardcoded conforme enunciado)
-INSTANCE_STRING = "Pp p pD ppBp p  pp pp  pCpVpp PP ppApCp  pp pp  p pBpp Dp p pP"
+# Instância única do e-fólio B (hardcoded conforme enunciado) — exactamente 64 chars
+INSTANCE_STRING = "Pp p pD ppBp p   pp pp  pCpVpp PP ppApCp  pp pp   p pBpp Dp p pP"
 
 
 @dataclass(frozen=True)
