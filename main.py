@@ -11,65 +11,67 @@ import os
 from time import perf_counter
 
 from game_state import build_initial_state, GameState
-from game_rules import is_terminal, get_valid_moves
+from game_rules import is_terminal, get_valid_moves, game_result
 from minimax import choose_move
-
-try:
-    from board import Board
-except ImportError:
-    from chess_pawn_mower.board import Board  # type: ignore
-
-# Instância única — exactamente 64 caracteres conforme enunciado
-INSTANCE_STRING = "Pp p pD ppBp p   pp pp  pCpVpp PP ppApCp  pp pp   p pBpp Dp p pP"
 
 CSV_FILE = "resultados.csv"
 NUM_GAMES = 10
 DEPTH = 3
 TIME_LIMIT_MS = 900  # margem para ficar abaixo de 1s por jogada
 
-# Tokens que indicam jogo terminado
-END_TOKENS = {"Brancas", "Pretas", "Empate", "Inválido", "Erro"}
+# Apenas os tokens reconhecidos pelo enunciado
+END_TOKENS = {"Brancas", "Pretas", "Empate"}
+
+
+# ---------------------------------------------------------------------------
+# Resultado -> token
+# ---------------------------------------------------------------------------
+
+def _result_token(state: GameState) -> str:
+    """
+    Usa game_result() das game_rules para garantir consistência
+    com a mesma lógica usada pelo Minimax e pelo is_terminal.
+    """
+    result = game_result(state)   # 'A', 'V' ou 'empate'
+    if result == 'A':
+        return "Brancas"          # verde (A) ganhou
+    if result == 'V':
+        return "Pretas"           # vermelho (V) ganhou
+    return "Empate"
 
 
 # ---------------------------------------------------------------------------
 # Leitura / escrita do CSV
 # ---------------------------------------------------------------------------
 
-def read_csv() -> list[str]:
-    """
-    Lê resultados.csv e devolve lista de 10 linhas (sem newline).
-    Se o ficheiro não existir ou tiver menos de 10 linhas, completa com linhas vazias.
-    """
-    lines: list[str] = []
+def read_csv() -> list:
+    lines = []
     if os.path.exists(CSV_FILE):
         with open(CSV_FILE, "r", encoding="utf-8") as f:
             for raw in f:
                 lines.append(raw.rstrip("\r\n"))
-    # Garante exactamente NUM_GAMES linhas
     while len(lines) < NUM_GAMES:
         lines.append("")
     return lines[:NUM_GAMES]
 
 
-def write_csv(lines: list[str]) -> None:
+def write_csv(lines: list) -> None:
     with open(CSV_FILE, "w", encoding="utf-8") as f:
         for line in lines:
             f.write(line + "\n")
 
 
 # ---------------------------------------------------------------------------
-# Estado do jogo a partir da sequência de jogadas registada
+# Reconstrução do estado a partir do histórico de jogadas
 # ---------------------------------------------------------------------------
 
-def state_from_moves(moves: list[str]) -> GameState:
+def state_from_moves(moves: list) -> GameState:
     """
     Reconstrói o GameState aplicando a sequência de movimentos já registada.
-    'moves' é a lista de casas destino, ex: ['e6', 'd3', 'f7']
+    Para quando encontra uma jogada não reconhecida (estado inválido).
     """
     state = build_initial_state()
     for sq in moves:
-        if sq in END_TOKENS:
-            break
         player = state.turn
         valid = get_valid_moves(state, player)
         matched = None
@@ -78,65 +80,66 @@ def state_from_moves(moves: list[str]) -> GameState:
                 matched = next_state
                 break
         if matched is None:
-            # Jogada não reconhecida — devolve estado actual sem aplicar
             break
         state = matched
     return state
 
 
 # ---------------------------------------------------------------------------
-# Lógica de uma linha do CSV
+# Processamento de cada linha
 # ---------------------------------------------------------------------------
 
 def process_line(line: str) -> str:
     """
-    Dada uma linha do CSV:
-    - Se já terminou (token final presente) — devolve intacta.
-    - Se ainda está em curso — calcula UMA jogada com Minimax e acrescenta.
+    - Linha já com token final -> devolve intacta.
+    - Linha em curso -> calcula 1 jogada com Minimax e acrescenta.
+      Se o jogo terminar após a jogada, acrescenta também o token final.
     """
     tokens = line.split() if line.strip() else []
 
-    # Verifica se já terminou
+    # Jogo já terminado
     if tokens and tokens[-1] in END_TOKENS:
         return line
 
-    # Reconstrói estado a partir das jogadas já feitas
+    # Filtra tokens de controlo que possam ter escapado
     moves_so_far = [t for t in tokens if t not in END_TOKENS]
+
+    # Reconstrói estado
     state = state_from_moves(moves_so_far)
 
-    # Verifica condição terminal após aplicar todas as jogadas
+    # Verifica se já é terminal antes de jogar
     if is_terminal(state):
-        result_token = _result_token(state)
-        return (line.rstrip() + " " + result_token).strip()
+        token = _result_token(state)
+        return (" ".join(moves_so_far) + " " + token).strip()
 
-    # Calcula a próxima jogada com Minimax
+    # Verifica movimentos válidos antes de chamar Minimax
     player = state.turn
-    action, _ = choose_move(state, my_player=player, depth=DEPTH, time_limit_ms=TIME_LIMIT_MS)
+    valid = get_valid_moves(state, player)
+    if not valid:
+        # Sem movimentos: não deve acontecer (get_valid_moves devolve 'null'),
+        # mas por segurança fecha o jogo
+        token = _result_token(state)
+        return (" ".join(moves_so_far) + " " + token).strip()
 
-    new_line = (line.rstrip() + " " + action).strip() if line.strip() else action
+    # Minimax escolhe a jogada
+    result = choose_move(state, my_player=player, depth=DEPTH, time_limit_ms=TIME_LIMIT_MS)
 
-    # Reconstrói estado com a nova jogada para verificar se terminou
-    new_tokens = new_line.split()
-    new_moves = [t for t in new_tokens if t not in END_TOKENS]
-    new_state = state_from_moves(new_moves)
+    # Guarda contra None inesperado
+    if result is None or result[0] is None:
+        token = _result_token(state)
+        return (" ".join(moves_so_far) + " " + token).strip()
 
-    if is_terminal(new_state):
-        result_token = _result_token(new_state)
-        new_line = new_line + " " + result_token
+    action, next_state = result
+
+    # Acrescenta a jogada à linha
+    new_moves = moves_so_far + [action]
+    new_line = " ".join(new_moves)
+
+    # Usa next_state directamente (sem re-simular) para verificar terminal
+    if is_terminal(next_state):
+        new_line = new_line + " " + _result_token(next_state)
 
     return new_line
-
-
-def _result_token(state: GameState) -> str:
-    """Devolve o token de resultado conforme quem jogou nesta linha."""
-    # Verde = agente que joga primeiro (turn='A' no início)
-    # O token segue a perspectiva: quem ganhou
-    if state.green_captured > state.red_captured:
-        return "Brancas"   # agente verde (A) ganhou
-    elif state.red_captured > state.green_captured:
-        return "Pretas"    # agente vermelho (V) ganhou
-    else:
-        return "Empate"
 
 
 # ---------------------------------------------------------------------------
@@ -144,20 +147,12 @@ def _result_token(state: GameState) -> str:
 # ---------------------------------------------------------------------------
 
 def main() -> int:
-    start = perf_counter()
-
     lines = read_csv()
 
     for i in range(NUM_GAMES):
         lines[i] = process_line(lines[i])
 
     write_csv(lines)
-
-    elapsed = int((perf_counter() - start) * 1000)
-    print("resultados.csv actualizado em {}ms".format(elapsed))
-    for i, line in enumerate(lines):
-        print("Jogo {:2d}: {}".format(i + 1, line[:80]))
-
     return 0
 
 
