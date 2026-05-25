@@ -27,36 +27,65 @@ MAX_ACTIONS = 60
 # ---------------------------------------------------------------------------
 
 def _cell_at(state: GameState, row: int, col: int) -> str:
-    """Devolve o símbolo lógico numa casa, considerando o estado dinâmico."""
+    """
+    Devolve o símbolo lógico numa casa, considerando o estado dinâmico.
+
+    Prioridade (da mais alta para a mais baixa):
+    1. Peça activa verde (posicao actual)
+    2. Peça activa vermelha (posicao actual)
+    3. Rei verde (só se estiver fora de peça)
+    4. Rei vermelho (só se estiver fora de peça)
+    5. Peões pretos restantes
+    6. Peças abandonadas -> peões brancos
+    7. Casa de origem de peça activa -> vazia (peça saiu dali)
+    8. Tabuleiro estático
+    """
     pos = (row, col)
 
-    # Peça activa verde
+    # 1. Peça activa verde na posicao actual
     if state.green_piece and pos == state.green_piece_pos:
         return state.green_piece
-    # Peça activa vermelha
+
+    # 2. Peça activa vermelha na posicao actual
     if state.red_piece and pos == state.red_piece_pos:
         return state.red_piece
-    # Reis
-    if pos == state.green_king_pos:
+
+    # 3. Rei verde (apenas quando fora de peça)
+    if state.green_king_pos is not None and pos == state.green_king_pos:
         return 'A'
-    if pos == state.red_king_pos:
+
+    # 4. Rei vermelho (apenas quando fora de peça)
+    if state.red_king_pos is not None and pos == state.red_king_pos:
         return 'V'
-    # Peões pretos restantes
+
+    # 5. Peões pretos restantes
     if pos in state.remaining_black_pawns:
         return 'p'
-    # Peças já abandonadas tornam-se peões brancos
+
+    # 6. Peças abandonadas tornam-se peões brancos
     if pos in state.used_pieces:
         return 'P'
-    # Tabuleiro estático (peças brancas originais, peões brancos)
-    cell = state.board.get(row, col)
-    # Peças de origem das peças activas ficam vazias enquanto estão activas
-    if cell in ACTIVATABLE_PIECES:
-        if state.green_piece_pos == pos and state.green_piece == cell:
-            return cell
-        if state.red_piece_pos == pos and state.red_piece == cell:
-            return cell
-        return cell
-    return cell
+
+    # 7. Casa de origem de peça activa fica vazia (o agente saiu dali)
+    #    Verde: se está dentro de uma peça, a sua posicao original no board está vazia
+    if state.green_piece is not None:
+        orig_cell = state.board.get(row, col)
+        if orig_cell == state.green_piece and pos != state.green_piece_pos:
+            # Só há uma peça de cada tipo no tabuleiro original
+            # Se a peça activa verde está noutro sítio, esta casa está vazia
+            all_positions = state.board.find(state.green_piece)
+            if len(all_positions) == 1:
+                return ' '
+
+    if state.red_piece is not None:
+        orig_cell = state.board.get(row, col)
+        if orig_cell == state.red_piece and pos != state.red_piece_pos:
+            all_positions = state.board.find(state.red_piece)
+            if len(all_positions) == 1:
+                return ' '
+
+    # 8. Tabuleiro estático
+    return state.board.get(row, col)
 
 
 def _is_adjacent(pos_a: Position, pos_b: Position) -> bool:
@@ -100,7 +129,7 @@ def get_valid_moves(state: GameState, player: str) -> List[Tuple[str, GameState]
 
     board = state.board
 
-    # ── MODO REI: agente fora de peça ──────────────────────────────────────
+    # ── MODO REI: agente fora de peça ───────────────────────────────────
     if piece is None:
         pos = king_pos
         if pos is None:
@@ -121,7 +150,7 @@ def get_valid_moves(state: GameState, player: str) -> List[Tuple[str, GameState]
             if cell == ' ':
                 moves.append((sq, _apply_king_move(state, player, dest)))
 
-            # Entra numa peça activável
+            # Entra numa peça activável (não abandonada)
             elif cell in ACTIVATABLE_PIECES and dest not in state.used_pieces:
                 moves.append((sq, _apply_enter_piece(state, player, dest, cell)))
 
@@ -129,7 +158,7 @@ def get_valid_moves(state: GameState, player: str) -> List[Tuple[str, GameState]
             return _null_move(state, player)
         return moves
 
-    # ── MODO PEÇA: agente dentro de uma peça ───────────────────────────────
+    # ── MODO PEÇA: agente dentro de uma peça ───────────────────────────
     if piece_pos is None:
         return _null_move(state, player)
 
@@ -184,7 +213,11 @@ def _apply_king_move(state: GameState, player: str, dest: Position) -> GameState
 
 
 def _apply_enter_piece(state: GameState, player: str, dest: Position, piece: str) -> GameState:
-    """Agente entra numa peça branca."""
+    """
+    Agente entra numa peça branca.
+    O rei desaparece (king_pos=None) e a peça fica activa na posição dest.
+    A casa de origem da peça no board estático é tratada como vazia por _cell_at.
+    """
     if player == 'A':
         return replace(state,
             green_king_pos=None,
@@ -273,16 +306,14 @@ def is_terminal(state: GameState) -> bool:
     if state.green_captured > half or state.red_captured > half:
         return True
     # Sem peças no tabuleiro (todas usadas)
-    pieces_on_board = [
-        sym for _, _, sym in state.board.iter_cells()
+    # Correcto: itera posições de peças activáveis e verifica se todas estão em used_pieces
+    piece_positions = [
+        (row, col)
+        for row, col, sym in state.board.iter_cells()
         if sym in ACTIVATABLE_PIECES
     ]
-    active_pieces_remaining = [
-        p for p in pieces_on_board
-        if state.board.find(p) and
-        not all(pos in state.used_pieces for pos in state.board.find(p))
-    ]
-    if not active_pieces_remaining and state.green_piece is None and state.red_piece is None:
+    all_pieces_used = all(pos in state.used_pieces for pos in piece_positions)
+    if all_pieces_used and state.green_piece is None and state.red_piece is None:
         return True
     return False
 
