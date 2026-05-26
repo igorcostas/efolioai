@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 # ---------------------------------------------------------------------------
-# E-fólio B — UAb 2025/2026
-# Arquitectura VPL: o programa é chamado várias vezes.
-# Em cada chamada: lê resultados.csv, acrescenta UMA jogada por jogo
-# em curso, grava e sai. O VPL volta a chamar até os 10 jogos terminarem.
+# E-folio B  --  UAb 2025/2026
+# Arquitectura VPL: o programa e chamado varias vezes.
+# Em cada chamada: le resultados.csv, acrescenta UMA jogada por jogo
+# em curso, grava e sai. O VPL volta a chamar ate os 10 jogos terminarem.
 # ---------------------------------------------------------------------------
 
 import os
-import sys
 from typing import Optional
 
 from game_state import build_initial_state, GameState, active_position
@@ -20,17 +19,7 @@ NUM_GAMES = 10
 DEPTH = 3
 TIME_LIMIT_MS = 900
 
-END_TOKENS = {"Brancas", "Pretas", "Empate", "Inválido", "Invalido", "Erro"}
-_CIRCLED = ["", "①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧", "⑨", "⑩"]
-_RESULT_VISUAL = {
-    "Brancas": "☖ 🟥",
-    "Pretas": "☗ 🟥",
-    "Empate": "🟰 🟨",
-    "Inválido": "⚠️",
-    "Invalido": "⚠️",
-    "Erro": "❌",
-    None: "⏳",
-}
+END_TOKENS = {"Brancas", "Pretas", "Empate", "Invalido", "Erro"}
 
 
 # ---------------------------------------------------------------------------
@@ -38,7 +27,7 @@ _RESULT_VISUAL = {
 # ---------------------------------------------------------------------------
 
 def _result_token(state: GameState) -> str:
-    result = game_result(state)
+    result = game_result(state)  # 'A', 'V' ou 'empate'
     if result == 'A':
         return "Brancas"
     if result == 'V':
@@ -47,7 +36,7 @@ def _result_token(state: GameState) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Leitura do CSV existente (sem escrita aqui)
+# Leitura do CSV existente
 # ---------------------------------------------------------------------------
 
 def read_csv() -> list:
@@ -61,10 +50,9 @@ def read_csv() -> list:
     return lines[:NUM_GAMES]
 
 
-def _should_print_feedback() -> bool:
-    env = os.environ.get("EFB_FEEDBACK", "").strip().lower()
-    return env in {"1", "true", "yes", "on"}
-
+# ---------------------------------------------------------------------------
+# Auxiliares de linha
+# ---------------------------------------------------------------------------
 
 def _split_line(line: str) -> tuple[list[str], Optional[str]]:
     tokens = line.split() if line.strip() else []
@@ -72,82 +60,19 @@ def _split_line(line: str) -> tuple[list[str], Optional[str]]:
     if not terminal_positions:
         return tokens, None
     if terminal_positions[-1] != len(tokens) - 1 or len(terminal_positions) > 1:
-        return [t for t in tokens if t not in END_TOKENS], "Inválido"
+        return [t for t in tokens if t not in END_TOKENS], "Invalido"
     return tokens[:-1], tokens[-1]
-
-
-def _circled(index: int) -> str:
-    return _CIRCLED[index] if 0 < index < len(_CIRCLED) else f"{index}."
 
 
 def _result_points(result: Optional[str]) -> int:
     return {
         "Brancas": 2, "Pretas": 0, "Empate": 1,
-        "Inválido": -1, "Invalido": -1, "Erro": -1, None: 0,
+        "Invalido": -1, "Erro": -1, None: 0,
     }.get(result, 0)
 
 
-def _result_label(result: Optional[str]) -> str:
-    return _RESULT_VISUAL.get(result, "⏳")
-
-
-def format_game_summary(index: int, line: str) -> str:
-    moves, result = _split_line(line)
-    move_text = " ".join(moves) if moves else "—"
-    return f"{_circled(index)} {move_text} → {_result_label(result)}{(' ' + result) if result else ''}"
-
-
-def build_feedback(lines: list[str]) -> str:
-    moves_counts: list[int] = []
-    results: list[Optional[str]] = []
-    summaries = []
-
-    for idx, line in enumerate(lines, start=1):
-        moves, result = _split_line(line)
-        moves_counts.append(len(moves))
-        results.append(result)
-        summaries.append(format_game_summary(idx, line))
-
-    finished = all(result in END_TOKENS for result in results)
-    parts = ["Jogos:", *summaries, "", "Resultados:"]
-
-    if finished:
-        a_points = sum(_result_points(result) for result in results)
-        b = max(moves_counts) if moves_counts else 0
-        c = min(moves_counts) if moves_counts else 0
-        threshold = (b + c) / 2 if moves_counts else 0
-        d = e = f = g = 0
-
-        for count, result in zip(moves_counts, results):
-            if result not in {"Brancas", "Pretas"}:
-                continue
-            is_fast = count < threshold
-            if result == "Brancas":
-                if is_fast: d += 1
-                else: f += 1
-            else:
-                if is_fast: e += 1
-                else: g += 1
-
-        raw_score = a_points * 5 + d - e - f + g
-        score = max(0, min(100, raw_score))
-        parts.extend([
-            f"➤ 🏆 A: {a_points} pontos",
-            f"➤ ⚔️ DEFG: {d + e + f + g}",
-            f"➤ 💰 Pontuação (0-100): {score}",
-        ])
-    else:
-        parts.extend([
-            "➤ 🏆 A: indisponível (há jogos em curso)",
-            "➤ ⚔️ DEFG: indisponível (há jogos em curso)",
-            "➤ 💰 Pontuação (0-100): indisponível",
-        ])
-
-    return "\n".join(parts)
-
-
 # ---------------------------------------------------------------------------
-# Reconstrução do estado a partir do histórico de jogadas
+# Reconstrucao do estado a partir do historico de jogadas
 # ---------------------------------------------------------------------------
 
 def state_from_moves(moves: list[str]) -> Optional[GameState]:
@@ -182,13 +107,13 @@ def process_line(line: str) -> str:
     if terminal_positions:
         if terminal_positions[-1] != len(tokens) - 1 or len(terminal_positions) > 1:
             moves_so_far = [t for t in tokens[:terminal_positions[0]] if t not in END_TOKENS]
-            return (" ".join(moves_so_far) + " Inválido").strip()
+            return (" ".join(moves_so_far) + " Invalido").strip()
         return line
 
     moves_so_far = tokens
     state = state_from_moves(moves_so_far)
     if state is None:
-        return (" ".join(moves_so_far) + " Inválido").strip()
+        return (" ".join(moves_so_far) + " Invalido").strip()
 
     if is_terminal(state):
         return (" ".join(moves_so_far) + " " + _result_token(state)).strip()
@@ -219,7 +144,9 @@ def process_line(line: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Ponto de entrada — with open aberto PRIMEIRO, escreve linha a linha
+# Ponto de entrada -- compativel VPL
+# with open aberto ANTES do loop; escreve e faz flush linha a linha
+# Sem print(), sem argparse, sem emojis, sem sys.argv
 # ---------------------------------------------------------------------------
 
 def main() -> int:
@@ -230,9 +157,6 @@ def main() -> int:
             lines[i] = process_line(lines[i])
             f.write(lines[i] + "\n")
             f.flush()
-
-    if _should_print_feedback():
-        print(build_feedback(lines))
 
     return 0
 
