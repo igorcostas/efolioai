@@ -67,12 +67,9 @@ def _cell_at(state: GameState, row: int, col: int) -> str:
         return 'P'
 
     # 7. Casa de origem de peça activa fica vazia (o agente saiu dali)
-    #    Verde: se está dentro de uma peça, a sua posicao original no board está vazia
     if state.green_piece is not None:
         orig_cell = state.board.get(row, col)
         if orig_cell == state.green_piece and pos != state.green_piece_pos:
-            # Só há uma peça de cada tipo no tabuleiro original
-            # Se a peça activa verde está noutro sítio, esta casa está vazia
             all_positions = state.board.find(state.green_piece)
             if len(all_positions) == 1:
                 return ' '
@@ -113,7 +110,8 @@ def get_valid_moves(state: GameState, player: str) -> List[Tuple[str, GameState]
     """
     Devolve lista de (square_destino, novo_estado) para todos os movimentos
     válidos do jogador 'player' ('A' ou 'V').
-    Se não existir nenhum movimento válido, devolve o movimento nulo.
+    Se não existir nenhum movimento válido, devolve o movimento nulo
+    (casa actual do agente como destino, conforme enunciado).
     """
     opp_pos = _opponent_pos(state, player)
     moves: List[Tuple[str, GameState]] = []
@@ -133,7 +131,7 @@ def get_valid_moves(state: GameState, player: str) -> List[Tuple[str, GameState]
     if piece is None:
         pos = king_pos
         if pos is None:
-            return _null_move(state, player)
+            return _null_move(state, player, pos)
 
         row_k, col_k = pos
         for d_row, d_col in KING_DELTAS:
@@ -155,12 +153,12 @@ def get_valid_moves(state: GameState, player: str) -> List[Tuple[str, GameState]
                 moves.append((sq, _apply_enter_piece(state, player, dest, cell)))
 
         if not moves:
-            return _null_move(state, player)
+            return _null_move(state, player, pos)
         return moves
 
     # ── MODO PEÇA: agente dentro de uma peça ───────────────────────────
     if piece_pos is None:
-        return _null_move(state, player)
+        return _null_move(state, player, piece_pos)
 
     # 1) Capturas de peões pretos com a peça activa
     for (nr, nc) in capture_targets(
@@ -189,7 +187,7 @@ def get_valid_moves(state: GameState, player: str) -> List[Tuple[str, GameState]
             moves.append((sq, _apply_exit_piece(state, player, dest)))
 
     if not moves:
-        return _null_move(state, player)
+        return _null_move(state, player, piece_pos)
     return moves
 
 
@@ -280,13 +278,22 @@ def _apply_exit_piece(state: GameState, player: str, dest: Position) -> GameStat
     )
 
 
-def _null_move(state: GameState, player: str) -> List[Tuple[str, GameState]]:
-    """Movimento nulo: passa a vez sem alterar posição."""
+def _null_move(state: GameState, player: str, current_pos: Optional[Position]) -> List[Tuple[str, GameState]]:
+    """
+    Movimento nulo: o agente joga para a casa onde já está (passa a vez).
+    A notação é a casa actual (ex: 'f7'), conforme o enunciado.
+    Só é válido quando não existe qualquer outro movimento válido.
+    """
+    if current_pos is not None:
+        sq = Board.index_to_square(current_pos[0], current_pos[1])
+    else:
+        sq = 'a1'  # fallback de segurança (não deve acontecer)
+
     new_state = replace(state,
         turn=opponent(player),
         action_count=state.action_count + 1,
     )
-    return [('null', new_state)]
+    return [(sq, new_state)]
 
 
 # ---------------------------------------------------------------------------
@@ -305,8 +312,7 @@ def is_terminal(state: GameState) -> bool:
     half = state.total_black_pawns / 2
     if state.green_captured > half or state.red_captured > half:
         return True
-    # Sem peças no tabuleiro (todas usadas)
-    # Correcto: itera posições de peças activáveis e verifica se todas estão em used_pieces
+    # Sem peças no tabuleiro (todas usadas e nenhum agente dentro de uma)
     piece_positions = [
         (row, col)
         for row, col, sym in state.board.iter_cells()
