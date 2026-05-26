@@ -3,8 +3,9 @@ from __future__ import annotations
 # ---------------------------------------------------------------------------
 # E-fólio B  —  Introdução à Inteligência Artificial  |  UAb 2025/2026
 # ---------------------------------------------------------------------------
-# Formato do resultados.csv esperado pelo VPL:
-#   Instância;Acções;Resultado;Peões_A;Peões_V;Solução_A;Solução_V
+# O CSV é aberto ANTES do loop e escrito linha a linha conforme cada
+# instância é resolvida.
+# Formato: Instância;I2(Tempo(ms));Solução
 # ---------------------------------------------------------------------------
 
 from time import perf_counter
@@ -15,7 +16,7 @@ except (ModuleNotFoundError, ImportError):
     from board import Board  # type: ignore
 
 from game_state import build_initial_state
-from game_rules import game_result, is_terminal
+from game_rules import game_result, is_terminal, get_valid_moves
 from minimax import choose_move
 
 # Instância única definida no enunciado
@@ -24,78 +25,53 @@ INSTANCE_STRING = "Pp p pD ppBp p  pp pp  pCpVpp PP ppApCp  pp pp  p pBpp Dp p p
 # Parâmetros do Minimax
 DEPTH = 3
 TIME_LIMIT_MS = 3000
+NUM_GAMES = 10
 
 
 # ---------------------------------------------------------------------------
-# Loop principal do jogo
+# Execução de um jogo completo
 # ---------------------------------------------------------------------------
 
 def play_game() -> dict:
     """
     Executa o jogo completo entre agente verde (A) e agente vermelho (V),
     ambos controlados pelo Minimax Alpha-Beta.
-    Devolve dicionário com estado final e histórico de acções.
+    Devolve dicionário com estado final, solução e tempo.
     """
     state = build_initial_state()
-
-    green_actions: list[str] = []
-    red_actions: list[str] = []
-
+    actions: list = []           # todas as acções intercaladas (A, V, A, V, ...)
     start_time = perf_counter()
 
     while not is_terminal(state):
         player = state.turn
-        action, next_state = choose_move(
+
+        # Verifica movimentos válidos antes de chamar Minimax
+        valid = get_valid_moves(state, player)
+        if not valid:
+            break
+
+        result = choose_move(
             state,
             my_player=player,
             depth=DEPTH,
             time_limit_ms=TIME_LIMIT_MS,
         )
-        if player == 'A':
-            green_actions.append(action)
-        else:
-            red_actions.append(action)
 
+        # Guarda contra None inesperado
+        if result is None or result[0] is None:
+            break
+
+        action, next_state = result
+        actions.append(action)
         state = next_state
 
     elapsed_ms = int((perf_counter() - start_time) * 1000)
 
     return {
-        'instance': 1,
         'state': state,
-        'green_actions': green_actions,
-        'red_actions': red_actions,
-        'winner': game_result(state),
-        'total_actions': state.action_count,
+        'solution': ' '.join(actions),
         'elapsed_ms': elapsed_ms,
     }
-
-
-# ---------------------------------------------------------------------------
-# Escrita do CSV
-# ---------------------------------------------------------------------------
-
-def write_csv(result: dict) -> None:
-    """
-    Grava resultados.csv com separador ';'.
-    Cabeçalho: Instância;Acções;Resultado;Peões_A;Peões_V;Solução_A;Solução_V
-    Uma linha por instância (apenas instância 1 no e-fólio B).
-    """
-    state = result['state']
-    sol_a = ' '.join(result['green_actions'])
-    sol_v = ' '.join(result['red_actions'])
-
-    with open('resultados.csv', 'w', encoding='utf-8') as f:
-        f.write('Instância;Acções;Resultado;Peões_A;Peões_V;Solução_A;Solução_V\n')
-        f.write('{};{};{};{};{};{};{}\n'.format(
-            result['instance'],
-            result['total_actions'],
-            result['winner'],
-            state.green_captured,
-            state.red_captured,
-            sol_a,
-            sol_v,
-        ))
 
 
 # ---------------------------------------------------------------------------
@@ -103,26 +79,18 @@ def write_csv(result: dict) -> None:
 # ---------------------------------------------------------------------------
 
 def main() -> int:
-    print('E-fólio B — a iniciar jogo...')
-    print('Instância: {}'.format(INSTANCE_STRING))
-    print()
+    with open('resultados.csv', 'w', encoding='utf-8') as f:
+        f.write('Instância;I2(Tempo(ms));Solução\n')
 
-    result = play_game()
-    write_csv(result)
-
-    state = result['state']
-    print('─' * 50)
-    print('Jogo terminado!')
-    print('Acções totais : {}'.format(result['total_actions']))
-    print('Tempo total   : {}ms'.format(result['elapsed_ms']))
-    print('Resultado     : {}'.format(result['winner']))
-    print('Peões A (verde)    : {}'.format(state.green_captured))
-    print('Peões V (vermelho) : {}'.format(state.red_captured))
-    print()
-    print('Solução A : {}'.format(' '.join(result['green_actions'])))
-    print('Solução V : {}'.format(' '.join(result['red_actions'])))
-    print('─' * 50)
-    print('resultados.csv gravado.')
+        for i in range(1, NUM_GAMES + 1):
+            result = play_game()
+            f.write('{};{};{}\n'.format(
+                i,
+                result['elapsed_ms'],
+                result['solution'],
+            ))
+            # Garante que a linha é escrita imediatamente no disco
+            f.flush()
 
     return 0
 
