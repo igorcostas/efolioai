@@ -1,51 +1,35 @@
-Table SysAdmin_Staging_UnsyncedTestSequences		
-Column	Type	Comments
-SyncID	bigint	"Used to collect unsynced data from [TESTSEQUENCE] prior to copy to Remote Server (for better performance).
-Controlled by Remote Server."
-TestSequenceID	int	
-Description	varchar(50)	
-		
-		
-Table SysAdmin_Staging_UnsyncedTests		
-Column	Type	Comments
-SyncID	bigint	"Used to collect unsynced data from [TEST] prior to copy to Remote Server (for better performance).
-Controlled by Remote Server."
-TestID	int	
-TestSequenceID	int	
-OrderTestNumber	int	
-SequencePosition	varchar(50)	
-Description	varchar(50)	
-Type	varchar(50)	
-Target	float	
-Unit	varchar(50)	
-HoldTime	int	
-MeasTime	int	
-LowLimit	float	
-UpperLimit	float	
-Status	bit	
-		
-		
-Table SysAdmin_Staging_UnsyncedResults		
-Column	Type	Comments
-SyncID	bigint	"Used to collect unsynced data from [RESULT] prior to copy to Remote Server (for better performance).
-Controlled by Remote Server."
-ResultID	bigint	
-ModelID	int	
-SerialNumber	varchar(50)	
-Test	varchar(50)	
-Timestamp	datetime2(7)	
-Measure	float	
-Result	varchar(50)	
-TestGroup	varchar(50)	
-SWVersion	varchar(50)	
-PartNumberHVCC	varchar(50)	
-CustSWVersion	varchar(50)	
-CustHWVersion	varchar(50)	
-TestSequenceID	int	
-		
-		
-Table SysAdmin_Staging_SyncedTestSequences		
-Column	Type	Comments
-SyncID	bigint	"Used to collect synced IDs prior to updating [SysAdmin_SyncTestSequences] with [IsSynced] = 1 
-(for better performance).
-Controlled by Remote Server."
+				
+EOL Table TESTSEQUENCE		EOL Table TEST		EOL Table RESULT
+Column		Column		Column
+TestSequenceID - Used directly		TestID - Used directly		ResultID - Used indirectly
+Description - Used directly		TestSequenceID - Used indirectly		ModelID - Used directly
+LIN_Baud - Not used		OrderTestNumber - Used directly		SerialNumber - Used directly
+CAN_Baud - Not used		SequencePosition - Used directly		Test - Used indirectly
+Logistic_Type - Not used		Description - Used directly		Timestamp - Used directly
+SETI_Software - Not used		Type - Used directly		Description - Not used
+SETI_Voltage - Not used		Target - Used directly		Measure - Used directly
+SETI_Current - Not used		Unit - Used directly		Unit - Not used
+SETI_RPM - Not used		HoldTime - Used directly		LowLimit - Not used
+SETI_Temp - Not used		MeasTime - Used directly		UpperLimit - Not used
+		LowLimit - Used directly		Result - Used directly
+		UpperLimit - Used directly		TestGroup - Used directly
+		Status - Used directly		HWVersion - Not used
+				SWVersion - Used directly
+				SETIVersion - Not used
+				Type - Not used
+				PartNumberOEM - Not used
+				PartNumberHVCC - Used directly
+				SeqSerial - Not used
+				InverterSN - Not used
+				InverterPN - Not used
+				InverterBD - Not used
+				station - Not used
+				CustSWVersion - Used directly
+				CustHWVersion - Used directly
+				SeqDate - Not used
+				FixtureID - Not used
+				SetupOnFixt - Not used
+				TestSequenceID - Used indirectly
+				TestSequenceDescription - Not used
+				ModelType - Not used
+				ModelDescription - Not used
