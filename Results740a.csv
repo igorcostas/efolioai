@@ -1,124 +1,38 @@
-﻿dbo,Detail,1,Index,bigint,,PK,NAO,,,
-dbo,Detail,2,Result_Index,bigint,,FK,NAO,dbo,Result,Index
-dbo,Detail,3,TestSequence_Index,bigint,,FK,NAO,dbo,TestSequence,Index
-dbo,Detail,4,Result,bit,,,NAO,,,
-dbo,Detail,5,Value,real,,,NAO,,,
-dbo,Detail,6,CycleTime,int,,,NAO,,,
-dbo,Program,1,Index,bigint,,PK,NAO,,,
-dbo,Program,2,Program,tinyint,,,NAO,,,
-dbo,Program,3,Description,nvarchar,40,,NAO,,,
-dbo,Program,4,VoltageHV,varchar,10,,NAO,,,
-dbo,Program,5,NetworkProtocol,varchar,5,,NAO,,,
-dbo,Program,6,BaudRate,int,,,NAO,,,
-dbo,Program,7,ComProtocol,varchar,10,,NAO,,,
-dbo,Program,8,SETI,nvarchar,200,,NAO,,,
-dbo,Program,9,HashCode,varchar,40,,NAO,,,
-dbo,Program,10,User,nvarchar,50,,NAO,,,
-dbo,Program,11,Timestamp,datetime,,,NAO,,,
-dbo,Program,12,Override,bit,,,NAO,,,
-dbo,Program,13,Deleted,bit,,,NAO,,,
-dbo,Rawdata,1,Index,bigint,,PK,NAO,,,
-dbo,Rawdata,2,Result_Index,bigint,,FK,NAO,dbo,Result,Index
-dbo,Rawdata,3,Allrawdata,text,,,NAO,,,
-dbo,Result,1,Index,bigint,,PK,NAO,,,
-dbo,Result,2,Program_Index,bigint,,FK,NAO,dbo,Program,Index
-dbo,Result,3,SerialNumber,varchar,20,,NAO,,,
-dbo,Result,4,PartNumber,varchar,20,,NAO,,,
-dbo,Result,5,CustomerPN,varchar,20,,NAO,,,
-dbo,Result,6,InverterSN,varchar,20,,NAO,,,
-dbo,Result,7,ProtocolVersion,varchar,10,,NAO,,,
-dbo,Result,8,SWVersion,varchar,10,,NAO,,,
-dbo,Result,9,CustSWVersion,varchar,10,,NAO,,,
-dbo,Result,10,CustHWVersion,varchar,10,,NAO,,,
-dbo,Result,11,Result,bit,,,NAO,,,
-dbo,Result,12,CycleTime,real,,,NAO,,,
-dbo,Result,13,Timestamp,datetime,,,NAO,,,
-dbo,Result,17,Mode,tinyint,,,NAO,,,
-dbo,Result,18,Nest_Number,tinyint,,,NAO,,,
-dbo,SysAdmin_Log,1,LogID,bigint,,PK,NAO,,,
-dbo,SysAdmin_Log,2,LogTypeID,tinyint,,FK,NAO,dbo,SysAdmin_LogType,LogTypeID
-dbo,SysAdmin_Log,3,Process,nvarchar,50,,NAO,,,
-dbo,SysAdmin_Log,4,Timestamp,datetime,,,NAO,,,
-dbo,SysAdmin_Log,5,Message,nvarchar,MAX,,SIM,,,
-dbo,SysAdmin_Log,6,FirstIndex,bigint,,,SIM,,,
-dbo,SysAdmin_Log,7,LastIndex,bigint,,,SIM,,,
-dbo,SysAdmin_Log,8,RowCount,int,,,SIM,,,
-dbo,SysAdmin_LogType,1,LogTypeID,tinyint,,PK,NAO,,,
-dbo,SysAdmin_LogType,2,Type,nvarchar,10,,NAO,,,
-dbo,SysAdmin_Staging_AuditCount,1,Programs,bigint,,,NAO,,,
-dbo,SysAdmin_Staging_AuditCount,2,SyncedPrograms,bigint,,,NAO,,,
-dbo,SysAdmin_Staging_AuditCount,3,UnsyncedPrograms,bigint,,,NAO,,,
-dbo,SysAdmin_Staging_AuditCount,4,Results,bigint,,,NAO,,,
-dbo,SysAdmin_Staging_AuditCount,5,SyncedResults,bigint,,,NAO,,,
-dbo,SysAdmin_Staging_AuditCount,6,UnsyncedResults,bigint,,,NAO,,,
-dbo,SysAdmin_Staging_SyncedPrograms,1,SyncID,bigint,,,SIM,,,
-dbo,SysAdmin_Staging_SyncedResults,1,SyncID,bigint,,,SIM,,,
-dbo,SysAdmin_Staging_UnsyncedDetails,1,SyncID,bigint,,,NAO,,,
-dbo,SysAdmin_Staging_UnsyncedDetails,2,Detail_Index,bigint,,,NAO,,,
-dbo,SysAdmin_Staging_UnsyncedDetails,3,Result_Index,bigint,,,NAO,,,
-dbo,SysAdmin_Staging_UnsyncedDetails,4,Sequence_Index,bigint,,,NAO,,,
-dbo,SysAdmin_Staging_UnsyncedDetails,5,Result,bit,,,NAO,,,
-dbo,SysAdmin_Staging_UnsyncedDetails,6,Value,real,,,NAO,,,
-dbo,SysAdmin_Staging_UnsyncedDetails,7,CycleTime,int,,,NAO,,,
-dbo,SysAdmin_Staging_UnsyncedPrograms,1,SyncID,bigint,,,NAO,,,
-dbo,SysAdmin_Staging_UnsyncedPrograms,2,Program_Index,bigint,,,NAO,,,
-dbo,SysAdmin_Staging_UnsyncedPrograms,3,Program,tinyint,,,NAO,,,
-dbo,SysAdmin_Staging_UnsyncedPrograms,4,Description,nvarchar,40,,NAO,,,
-dbo,SysAdmin_Staging_UnsyncedPrograms,5,VoltageHV,varchar,10,,NAO,,,
-dbo,SysAdmin_Staging_UnsyncedPrograms,6,ComProtocol,varchar,10,,NAO,,,
-dbo,SysAdmin_Staging_UnsyncedPrograms,7,HashCode,varchar,40,,NAO,,,
-dbo,SysAdmin_Staging_UnsyncedPrograms,8,User,nvarchar,50,,SIM,,,
-dbo,SysAdmin_Staging_UnsyncedPrograms,9,Timestamp,datetime,,,NAO,,,
-dbo,SysAdmin_Staging_UnsyncedResults,1,SyncID,bigint,,,NAO,,,
-dbo,SysAdmin_Staging_UnsyncedResults,2,Result_Index,bigint,,,NAO,,,
-dbo,SysAdmin_Staging_UnsyncedResults,3,Program_Index,bigint,,,NAO,,,
-dbo,SysAdmin_Staging_UnsyncedResults,4,SerialNumber,varchar,20,,NAO,,,
-dbo,SysAdmin_Staging_UnsyncedResults,5,PartNumber,varchar,20,,NAO,,,
-dbo,SysAdmin_Staging_UnsyncedResults,6,SWVersion,varchar,10,,NAO,,,
-dbo,SysAdmin_Staging_UnsyncedResults,7,CustSWVersion,varchar,10,,NAO,,,
-dbo,SysAdmin_Staging_UnsyncedResults,8,CustHWVersion,varchar,10,,NAO,,,
-dbo,SysAdmin_Staging_UnsyncedResults,9,Result,bit,,,NAO,,,
-dbo,SysAdmin_Staging_UnsyncedResults,10,CycleTime,real,,,NAO,,,
-dbo,SysAdmin_Staging_UnsyncedResults,11,Timestamp,datetime,,,NAO,,,
-dbo,SysAdmin_Staging_UnsyncedResults,12,Nest_Number,tinyint,,,NAO,,,
-dbo,SysAdmin_Staging_UnsyncedSequences,1,SyncID,bigint,,,NAO,,,
-dbo,SysAdmin_Staging_UnsyncedSequences,2,Sequence_Index,bigint,,,NAO,,,
-dbo,SysAdmin_Staging_UnsyncedSequences,3,Program_Index,bigint,,,NAO,,,
-dbo,SysAdmin_Staging_UnsyncedSequences,4,Sequence,smallint,,,NAO,,,
-dbo,SysAdmin_Staging_UnsyncedSequences,5,TestGroup,varchar,30,,NAO,,,
-dbo,SysAdmin_Staging_UnsyncedSequences,6,TestDescription,nvarchar,50,,NAO,,,
-dbo,SysAdmin_Staging_UnsyncedSequences,7,Type,varchar,10,,NAO,,,
-dbo,SysAdmin_Staging_UnsyncedSequences,8,Unit,varchar,10,,SIM,,,
-dbo,SysAdmin_Staging_UnsyncedSequences,9,Setup,real,,,SIM,,,
-dbo,SysAdmin_Staging_UnsyncedSequences,10,SetupTime,real,,,SIM,,,
-dbo,SysAdmin_Staging_UnsyncedSequences,11,LowLimit,real,,,SIM,,,
-dbo,SysAdmin_Staging_UnsyncedSequences,12,HighLimit,real,,,SIM,,,
-dbo,SysAdmin_Staging_UnsyncedSequences,13,Overridable,bit,,,NAO,,,
-dbo,SysAdmin_Staging_UnsyncedSequences,14,Override,bit,,,NAO,,,
-dbo,SysAdmin_Staging_UnsyncedSequences,15,OvLowLimit,real,,,SIM,,,
-dbo,SysAdmin_Staging_UnsyncedSequences,16,OvHighLimit,real,,,SIM,,,
-dbo,SysAdmin_Staging_UnsyncedSequences,17,Active,bit,,,NAO,,,
-dbo,SysAdmin_SyncPrograms,1,SyncID,bigint,,PK,NAO,,,
-dbo,SysAdmin_SyncPrograms,2,Program_Index,bigint,,FK,NAO,dbo,Program,Index
-dbo,SysAdmin_SyncPrograms,3,Program_Timestamp,datetime,,,NAO,,,
-dbo,SysAdmin_SyncPrograms,4,IsSynced,bit,,,NAO,,,
-dbo,SysAdmin_SyncResults,1,SyncID,bigint,,PK,NAO,,,
-dbo,SysAdmin_SyncResults,2,Result_Index,bigint,,FK,NAO,dbo,Result,Index
-dbo,SysAdmin_SyncResults,3,Result_Timestamp,datetime,,,NAO,,,
-dbo,SysAdmin_SyncResults,4,IsSynced,bit,,,NAO,,,
-dbo,TestSequence,1,Index,bigint,,PK,NAO,,,
-dbo,TestSequence,2,Program_index,bigint,,FK,NAO,dbo,Program,Index
-dbo,TestSequence,3,Sequence,smallint,,,NAO,,,
-dbo,TestSequence,4,TestGroup,varchar,30,,NAO,,,
-dbo,TestSequence,5,TestDescription,nvarchar,50,,NAO,,,
-dbo,TestSequence,6,Type,varchar,10,,NAO,,,
-dbo,TestSequence,7,Unit,varchar,10,,SIM,,,
-dbo,TestSequence,8,Setup,real,,,SIM,,,
-dbo,TestSequence,9,SetupTime,real,,,SIM,,,
-dbo,TestSequence,10,LowLimit,real,,,SIM,,,
-dbo,TestSequence,11,HighLimit,real,,,SIM,,,
-dbo,TestSequence,12,Overridable,bit,,,NAO,,,
-dbo,TestSequence,13,Override,bit,,,NAO,,,
-dbo,TestSequence,14,OvLowLimit,real,,,SIM,,,
-dbo,TestSequence,15,OvHighLimit,real,,,SIM,,,
-dbo,TestSequence,16,Active,bit,,,NAO,,,
+			
+Table SysAdmin_SyncTestSequences - Sync order -> 1st			
+Column	Type	Comments	Insert Data
+SyncID	bigint	PK (Identity).	"New record inserted by Trigger on INSERT UPDATE [TESTSEQUENCE].
+Controlled by EOL.
+
+[IsSynced] set to 1 after TestSequence is synced with Remote Server.
+Controlled by Remote Server."
+TestSequenceID	int	FK to [TESTSEQUENCE.TestSequenceID].	
+Timestamp	datetime	Default value = GETDATE().	
+IsSynced	bit	"Default value = 0.
+Set to 1 by Remote Server."	
+			
+			
+Table SysAdmin_SyncTests - Sync order -> 2nd			
+Column	Type	Comments	Insert Data
+SyncID	bigint	PK (Identity).	"New record inserted by Trigger on INSERT UPDATE [TEST].
+Controlled by EOL.
+
+[IsSynced] set to 1 after Test is synced with Remote Server.
+Controlled by Remote Server."
+TestID	int	FK to [TEST.TestID].	
+Timestamp	datetime	Default value = GETDATE().	
+IsSynced	bit	"Default value = 0.
+Set to 1 by Remote Server."	
+			
+			
+Table SysAdmin_SyncResults - Sync order -> 3rd			
+Column	Type	Comments	Insert Data
+SyncID	bigint	PK (Identity).	"New record inserted by Trigger on INSERT UPDATE [RESULT].
+Controlled by EOL.
+
+[IsSynced] set to 1 after Result is synced with Remote Server.
+Controlled by Remote Server."
+ResultID	int	FK to [RESULT.TestID].	
+Timestamp	datetime	Default value = GETDATE().	
+IsSynced	bit	"Default value = 0.
+Set to 1 by Remote Server."	
