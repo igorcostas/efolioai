@@ -1,38 +1,51 @@
-			
-Table SysAdmin_SyncTestSequences - Sync order -> 1st			
-Column	Type	Comments	Insert Data
-SyncID	bigint	PK (Identity).	"New record inserted by Trigger on INSERT UPDATE [TESTSEQUENCE].
-Controlled by EOL.
-
-[IsSynced] set to 1 after TestSequence is synced with Remote Server.
+Table SysAdmin_Staging_UnsyncedTestSequences		
+Column	Type	Comments
+SyncID	bigint	"Used to collect unsynced data from [TESTSEQUENCE] prior to copy to Remote Server (for better performance).
 Controlled by Remote Server."
-TestSequenceID	int	FK to [TESTSEQUENCE.TestSequenceID].	
-Timestamp	datetime	Default value = GETDATE().	
-IsSynced	bit	"Default value = 0.
-Set to 1 by Remote Server."	
-			
-			
-Table SysAdmin_SyncTests - Sync order -> 2nd			
-Column	Type	Comments	Insert Data
-SyncID	bigint	PK (Identity).	"New record inserted by Trigger on INSERT UPDATE [TEST].
-Controlled by EOL.
-
-[IsSynced] set to 1 after Test is synced with Remote Server.
+TestSequenceID	int	
+Description	varchar(50)	
+		
+		
+Table SysAdmin_Staging_UnsyncedTests		
+Column	Type	Comments
+SyncID	bigint	"Used to collect unsynced data from [TEST] prior to copy to Remote Server (for better performance).
 Controlled by Remote Server."
-TestID	int	FK to [TEST.TestID].	
-Timestamp	datetime	Default value = GETDATE().	
-IsSynced	bit	"Default value = 0.
-Set to 1 by Remote Server."	
-			
-			
-Table SysAdmin_SyncResults - Sync order -> 3rd			
-Column	Type	Comments	Insert Data
-SyncID	bigint	PK (Identity).	"New record inserted by Trigger on INSERT UPDATE [RESULT].
-Controlled by EOL.
-
-[IsSynced] set to 1 after Result is synced with Remote Server.
+TestID	int	
+TestSequenceID	int	
+OrderTestNumber	int	
+SequencePosition	varchar(50)	
+Description	varchar(50)	
+Type	varchar(50)	
+Target	float	
+Unit	varchar(50)	
+HoldTime	int	
+MeasTime	int	
+LowLimit	float	
+UpperLimit	float	
+Status	bit	
+		
+		
+Table SysAdmin_Staging_UnsyncedResults		
+Column	Type	Comments
+SyncID	bigint	"Used to collect unsynced data from [RESULT] prior to copy to Remote Server (for better performance).
 Controlled by Remote Server."
-ResultID	int	FK to [RESULT.TestID].	
-Timestamp	datetime	Default value = GETDATE().	
-IsSynced	bit	"Default value = 0.
-Set to 1 by Remote Server."	
+ResultID	bigint	
+ModelID	int	
+SerialNumber	varchar(50)	
+Test	varchar(50)	
+Timestamp	datetime2(7)	
+Measure	float	
+Result	varchar(50)	
+TestGroup	varchar(50)	
+SWVersion	varchar(50)	
+PartNumberHVCC	varchar(50)	
+CustSWVersion	varchar(50)	
+CustHWVersion	varchar(50)	
+TestSequenceID	int	
+		
+		
+Table SysAdmin_Staging_SyncedTestSequences		
+Column	Type	Comments
+SyncID	bigint	"Used to collect synced IDs prior to updating [SysAdmin_SyncTestSequences] with [IsSynced] = 1 
+(for better performance).
+Controlled by Remote Server."
